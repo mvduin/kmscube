@@ -121,6 +121,7 @@ static int init_drm(void)
 		if (connector->connection == DRM_MODE_CONNECTED) {
 			/* choose the first supported mode */
 			drm.mode[drm.ndisp] = &connector->modes[0];
+			/* XXX HACK */ while( drm.mode[drm.ndisp]->hdisplay > 1280 ) ++drm.mode[drm.ndisp];
 			drm.connector_id[drm.ndisp] = connector->connector_id;
 
 			for (j=0; j<resources->count_encoders; j++) {
