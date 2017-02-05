@@ -84,7 +84,7 @@ struct drm_fb {
 static int init_drm(void)
 {
 	static const char *modules[] = {
-			"omapdrm", "i915", "radeon", "nouveau", "vmwgfx", "exynos"
+			"tilcdc", "omapdrm", "i915", "radeon", "nouveau", "vmwgfx", "exynos"
 	};
 	drmModeRes *resources;
 	drmModeConnector *connector = NULL;
