@@ -182,7 +182,8 @@ static int init_gbm(void)
 
 	gbm.surface = gbm_surface_create(gbm.dev,
 			drm.mode[DISP_ID]->hdisplay, drm.mode[DISP_ID]->vdisplay,
-			GBM_FORMAT_XRGB8888,
+			//GBM_FORMAT_XRGB8888,
+			GBM_FORMAT_RGB565,
 			GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 	if (!gbm.surface) {
 		printf("failed to create gbm surface\n");
