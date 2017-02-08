@@ -70,8 +70,8 @@ static struct {
 	uint32_t ndisp;
 	uint32_t crtc_id[MAX_DISPLAYS];
 	uint32_t connector_id[MAX_DISPLAYS];
-	uint32_t resource_id;
-	uint32_t encoder[MAX_DISPLAYS];
+	drmModeRes *resources;
+	drmModeEncoder *encoder[MAX_DISPLAYS];
 	drmModeModeInfo *mode[MAX_DISPLAYS];
 	drmModeConnector *connectors[MAX_DISPLAYS];
 } drm;
@@ -86,7 +86,6 @@ static int init_drm(void)
 	static const char *modules[] = {
 			"tilcdc", "omapdrm", "i915", "radeon", "nouveau", "vmwgfx", "exynos"
 	};
-	drmModeRes *resources;
 	drmModeConnector *connector = NULL;
 	drmModeEncoder *encoder = NULL;
 	int i, j;
@@ -108,24 +107,23 @@ static int init_drm(void)
 		return -1;
 	}
 
-	resources = drmModeGetResources(drm.fd);
-	if (!resources) {
+	drm.resources = drmModeGetResources(drm.fd);
+	if (!drm.resources) {
 		printf("drmModeGetResources failed: %s\n", strerror(errno));
 		return -1;
 	}
-	drm.resource_id = (uint32_t) resources;
 
 	/* find a connected connector: */
-	for (i = 0; i < resources->count_connectors; i++) {
-		connector = drmModeGetConnector(drm.fd, resources->connectors[i]);
+	for (i = 0; i < drm.resources->count_connectors; i++) {
+		connector = drmModeGetConnector(drm.fd, drm.resources->connectors[i]);
 		if (connector->connection == DRM_MODE_CONNECTED) {
 			/* choose the first supported mode */
 			drm.mode[drm.ndisp] = &connector->modes[0];
 			/* XXX HACK */ while( drm.mode[drm.ndisp]->hdisplay > 1280 ) ++drm.mode[drm.ndisp];
 			drm.connector_id[drm.ndisp] = connector->connector_id;
 
-			for (j=0; j<resources->count_encoders; j++) {
-				encoder = drmModeGetEncoder(drm.fd, resources->encoders[j]);
+			for (j=0; j<drm.resources->count_encoders; j++) {
+				encoder = drmModeGetEncoder(drm.fd, drm.resources->encoders[j]);
 				if (encoder->encoder_id == connector->encoder_id)
 					break;
 
@@ -138,7 +136,7 @@ static int init_drm(void)
 				return -1;
 			}
 
-			drm.encoder[drm.ndisp]  = (uint32_t) encoder;
+			drm.encoder[drm.ndisp] = encoder;
 			drm.crtc_id[drm.ndisp] = encoder->crtc_id;
 			drm.connectors[drm.ndisp] = connector;
 
@@ -347,7 +345,7 @@ static int init_gl(void)
 			"    gl_FragColor = vVaryingColor;  \n"
 			"}                                  \n";
 
-	gl.display = eglGetDisplay(gbm.dev);
+	gl.display = eglGetDisplay((EGLNativeDisplayType)gbm.dev);
 
 	if (!eglInitialize(gl.display, &major, &minor)) {
 		printf("failed to initialize\n");
@@ -506,15 +504,13 @@ static void exit_gl(void)
 static void exit_drm(void)
 {
 
-        drmModeRes *resources;
         int i;
 
-        resources = (drmModeRes *)drm.resource_id;
-        for (i = 0; i < resources->count_connectors; i++) {
+        for (i = 0; i < drm.resources->count_connectors; i++) {
                 drmModeFreeEncoder(drm.encoder[i]);
                 drmModeFreeConnector(drm.connectors[i]);
         }
-        drmModeFreeResources(drm.resource_id);
+        drmModeFreeResources(drm.resources);
         drmClose(drm.fd);
         return;
 }
@@ -632,7 +628,7 @@ void print_usage()
 	printf("\t-n <number> (optional): Number of frames to render\n");
 }
 
-int kms_signalhandler(int signum)
+void kms_signalhandler(int signum)
 {
 	switch(signum) {
 	case SIGINT:
